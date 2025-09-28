@@ -1,0 +1,38 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    command: ["node", "dist/server.js"]
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/anon_mvp?schema=public
+      REDIS_URL: redis://redis:6379
+      TOKEN_SECRET: super-secret-change-me
+      INTERNAL_API_TOKEN: internal-dev-token
+      CORS_ORIGIN: http://localhost:5173
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: anon_mvp
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:

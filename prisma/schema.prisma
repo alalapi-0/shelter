@@ -1,0 +1,68 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  extensions = [pgvector(schema: "public")]
+}
+
+model User {
+  id          String   @id @default(cuid())
+  shadowId    String   @unique
+  tokenHash   String
+  createdAt   DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  riskScore   Int      @default(0)
+  posts       Post[]
+  memberships Membership[]
+
+  @@index([createdAt])
+  @@index([shadowId])
+}
+
+model Post {
+  id         String    @id @default(cuid())
+  author     User      @relation(fields: [authorId], references: [id])
+  authorId   String
+  group      Group?    @relation(fields: [groupId], references: [id])
+  groupId    String?
+  textRaw    String
+  textClean  String
+  topicTags  String[]
+  embedding  Unsupported("vector")?
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@index([groupId])
+  @@index([authorId, createdAt])
+}
+
+model Group {
+  id          String        @id @default(cuid())
+  name        String
+  capacity    Int           @default(12)
+  memberCount Int           @default(0)
+  isArchived  Boolean       @default(false)
+  memberships Membership[]
+  posts       Post[]
+
+  @@index([isArchived])
+}
+
+model Membership {
+  id       String   @id @default(cuid())
+  user     User     @relation(fields: [userId], references: [id])
+  userId   String
+  group    Group    @relation(fields: [groupId], references: [id])
+  groupId  String
+  joinedAt DateTime @default(now())
+
+  @@unique([userId, groupId])
+  @@index([groupId])
+  @@index([userId])
+}
