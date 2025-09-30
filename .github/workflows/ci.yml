@@ -15,6 +15,9 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm install
+      - run: npm --prefix web install
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
+      - run: npm run web:lint
+      - run: npm run web:build

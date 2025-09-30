@@ -47,9 +47,10 @@ const groupsRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.send({
         items: posts.map((post) => ({
           id: post.id,
-          text: post.textClean,
+          textClean: post.textClean,
           topicTags: post.topicTags,
-          createdAt: post.createdAt
+          createdAt: post.createdAt,
+          groupId: post.groupId
         }))
       });
     }

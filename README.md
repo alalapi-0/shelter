@@ -90,6 +90,18 @@ npm run dev
 
 服务默认监听 `http://localhost:3000`，保存源码将自动重启。
 
+### 运行前端
+
+匿名社区提供了位于 `web/` 目录下的 React 前端以便联调：
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+默认前端使用 `http://localhost:3000` 作为 API 地址，可通过复制 `.env.example` 为 `.env` 并修改 `VITE_API_BASE` 进行调整。请在启动前端前确保数据库、Redis 与后端均已运行。
+
 ## 使用 Docker Compose
 
 项目提供一键启动配置，包含应用、PostgreSQL (自动启用 pgvector) 与 Redis：
@@ -131,6 +143,18 @@ docker compose exec app npx prisma migrate deploy
 | `pgvector` 扩展失败 | 确认数据库用户具备超级权限；若本地 PostgreSQL 未安装，执行 `CREATE EXTENSION vector;` |
 | Prisma 连接失败 | 检查 `DATABASE_URL` 是否正确、数据库是否启动；必要时运行 `npm run db:push` 重新同步 |
 | Redis 连接失败 | 检查 `REDIS_URL`、确认服务运行；Docker 环境下确保网络未被占用 |
+
+### CORS 常见问题
+
+- 前端地址需包含在根目录 `.env` 的 `CORS_ORIGIN` 列表中，默认为 `http://localhost:5173`。
+- 如果浏览器仍然报错，请确认请求携带的端口、协议与环境变量完全一致，并重启后端应用。
+- 代理或浏览器插件可能修改请求头，建议在无扩展的隐身窗口内复现。
+
+### 401 常见原因
+
+- 未在请求头中携带 `Authorization: Bearer <token>`。
+- token 已过期或在数据库中找不到对应哈希（重新注册可获取新 token）。
+- 客户端缓存被清空但仍然尝试访问受保护接口，需要重新注册并刷新页面。
 
 ## 代码质量
 
