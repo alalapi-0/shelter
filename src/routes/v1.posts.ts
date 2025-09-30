@@ -42,7 +42,12 @@ const postsRoutes: FastifyPluginAsync = async (fastify) => {
       ]
     },
     async (request, reply) => {
-      const body = request.body as { text: string; topicTags?: string[] };
+      const body = request.body as {
+        text?: string;
+        topicTags?: unknown;
+        groupId?: string | null;
+      };
+
       if (!body?.text) {
         return reply.code(400).send({ error: 'INVALID_REQUEST', message: 'text is required' });
       }
@@ -58,18 +63,45 @@ const postsRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      const latestMembership = await prisma.membership.findFirst({
-        where: { userId: request.user!.id },
-        orderBy: { joinedAt: 'desc' }
-      });
+      const topicTags = Array.isArray(body.topicTags)
+        ? body.topicTags
+            .filter((tag): tag is string => typeof tag === 'string' && tag.trim().length > 0)
+            .map((tag) => tag.trim())
+        : [];
+
+      let targetGroupId: string | null = null;
+
+      if (body.groupId) {
+        const membership = await prisma.membership.findUnique({
+          where: {
+            userId_groupId: {
+              userId: request.user!.id,
+              groupId: body.groupId
+            }
+          }
+        });
+
+        if (!membership) {
+          return reply.code(403).send({ error: 'FORBIDDEN', message: 'Not part of this group' });
+        }
+
+        targetGroupId = body.groupId;
+      } else {
+        const latestMembership = await prisma.membership.findFirst({
+          where: { userId: request.user!.id },
+          orderBy: { joinedAt: 'desc' }
+        });
+
+        targetGroupId = latestMembership?.groupId ?? null;
+      }
 
       const post = await prisma.post.create({
         data: {
           authorId: request.user!.id,
           textRaw: body.text,
           textClean: cleanText,
-          topicTags: body.topicTags ?? [],
-          groupId: latestMembership?.groupId,
+          topicTags,
+          groupId: targetGroupId ?? undefined,
           expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 48)
         }
       });
@@ -77,7 +109,7 @@ const postsRoutes: FastifyPluginAsync = async (fastify) => {
       if (moderationResult.status === 'needs_review') {
         return reply.code(202).send({
           id: post.id,
-          text: post.textClean,
+          textClean: post.textClean,
           topicTags: post.topicTags,
           expiresAt: post.expiresAt,
           moderation: moderationResult
@@ -86,8 +118,10 @@ const postsRoutes: FastifyPluginAsync = async (fastify) => {
 
       return reply.code(201).send({
         id: post.id,
-        text: post.textClean,
+        textClean: post.textClean,
         topicTags: post.topicTags,
+        groupId: post.groupId,
+        createdAt: post.createdAt,
         expiresAt: post.expiresAt
       });
     }
@@ -118,7 +152,7 @@ const postsRoutes: FastifyPluginAsync = async (fastify) => {
     const hasNextPage = posts.length > limit;
     const items = posts.slice(0, limit).map((post) => ({
       id: post.id,
-      text: post.textClean,
+      textClean: post.textClean,
       topicTags: post.topicTags,
       groupId: post.groupId,
       createdAt: post.createdAt

@@ -47,9 +47,12 @@ export const buildApp = async () => {
     logger: logger as unknown as FastifyBaseLogger
   });
 
+  const corsOrigins = env.CORS_ORIGIN.split(',').map((item) => item.trim());
+
   await fastify.register(cors, {
-    origin: env.CORS_ORIGIN.split(',').map((item) => item.trim()),
-    methods: ['GET', 'POST', 'OPTIONS'],
+    origin: corsOrigins,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: false
   });
 
